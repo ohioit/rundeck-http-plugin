@@ -16,3 +16,9 @@ configuration is per-project or per-framework. This means that each job
 will share the entire project or entire frameworks credentials. However,
 this allows those credentials to be externalized into the framework
 configuration and avoids them being exported with projects.
+
+## Todo
+
+- Support request parameters from config and/or data
+- Support request body from config and/or data
+- Find a way to support per-job authentication settings?
