@@ -3,6 +3,8 @@ This plugin provides a way to send HTTP requests as part of
 a [Rundeck](http://rundeck.org) workflow step. It is somewhat
 based on https://github.com/rvs-fluid-it/rundeck-httppost-plugin.
 
+[![Build Status](https://travis-ci.org/ikogan/rundeck-http-plugin.svg?branch=master)](https://travis-ci.org/ikogan/rundeck-http-plugin)
+
 ## Features
 
 - GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
