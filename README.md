@@ -3,7 +3,7 @@ This plugin provides a way to send HTTP requests as part of
 a [Rundeck](http://rundeck.org) workflow step. It is somewhat
 based on https://github.com/rvs-fluid-it/rundeck-httppost-plugin.
 
-[![Build Status](https://travis-ci.org/ikogan/rundeck-http-plugin.svg?branch=master)](https://travis-ci.org/ikogan/rundeck-http-plugin) [![Dependency Status](https://www.versioneye.com/user/projects/561e86d336d0ab00160001a9/badge.svg?style=flat)](https://www.versioneye.com/user/projects/561e86d336d0ab00160001a9) [![Test Coverage](http://codecov.io/github/ikogan/rundeck-http-plugin/coverage.svg?branch=master)](http://codecov.io/github/ikogan/rundeck-http-plugin?branch=master)
+[![Build Status](https://travis-ci.org/ikogan/rundeck-http-plugin.svg?branch=master)](https://travis-ci.org/ikogan/rundeck-http-plugin) [![Dependency Status](https://www.versioneye.com/user/projects/561e86d336d0ab00160001a9/badge.svg?style=flat)](https://www.versioneye.com/user/projects/561e86d336d0ab00160001a9) [![Test Coverage](http://codecov.io/github/ikogan/rundeck-http-plugin/coverage.svg?branch=master)](http://codecov.io/github/ikogan/rundeck-http-plugin?branch=master)[![Coverty Scan](https://scan.coverity.com/projects/6665/badge.svg?flat=1)](https://scan.coverity.com/projects/ikogan-rundeck-http-plugin)
 
 ## Features
 
