@@ -182,6 +182,16 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                 } else {
                     throw new StepException("Remote URL requires authentication.", StepFailureReason.ConfigurationFailure);
                 }
+            } else if(response.getStatus() >= 400) {
+                String message = "Error when sending request";
+
+                if(response.getStatusText().length() > 0) {
+                    message += ": " + response.getStatusText();
+                } else {
+                    message += ": " + Integer.toString(response.getStatus()) + " Error";
+                }
+                
+                throw new StepException(message, Reason.HTTPFailure);
             }
         } catch (UnirestException e) {
             StepException se = new StepException("Error when sending request: " + e.getMessage(), Reason.HTTPFailure);

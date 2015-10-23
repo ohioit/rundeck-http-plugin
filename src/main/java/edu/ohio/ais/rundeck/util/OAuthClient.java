@@ -52,7 +52,7 @@ public class OAuthClient {
      * @throws UnirestException
      * @throws HttpClientException When a non 200 or 401 status code is returned.
      */
-    void doTokenRequest() throws UnirestException, HttpClientException {
+    void doTokenRequest() throws UnirestException, HttpClientException, OAuthException {
         this.accessToken = null;
 
         log.debug("Requesting access token from " + this.tokenEndpoint);
@@ -69,6 +69,8 @@ public class OAuthClient {
         } else {
             throw new HttpClientException(response.getStatusText());
         }
+
+        this.doTokenValidate(true);
     }
 
     /**
@@ -90,6 +92,21 @@ public class OAuthClient {
      * @throws OAuthException When the Client ID on the token doesn't match our client ID.
      */
     void doTokenValidate() throws HttpClientException, UnirestException, OAuthException {
+        this.doTokenValidate(false);
+    }
+
+    /**
+     * As in doTokenValidate(), validate that the token is correct. In this case we
+     * can specify that the token has _just_ been retrieved so that we don't try to
+     * retrieve it again if validate fails.
+     *
+     * @param newToken True if this is a brand new token and we shouldn't try to get
+     *                 a new on 401.a
+     * @throws HttpClientException
+     * @throws UnirestException
+     * @throws OAuthException
+     */
+    void doTokenValidate(Boolean newToken) throws HttpClientException, UnirestException, OAuthException {
         if(this.accessToken == null) {
             this.doTokenRequest();
         }
@@ -103,14 +120,19 @@ public class OAuthClient {
                     .asJson();
 
             if (response.getStatus() == STATUS_SUCCESS) {
-                String clientId = response.getBody().getObject().getString("clientId");
+                String clientId = response.getBody().getObject().getString("client");
 
                 if (!this.clientId.equals(clientId)) {
                     throw new OAuthException("Token received for a client other than us.");
                 }
             } else if (response.getStatus() == STATUS_AUTHORIZATION_REQUIRED) {
                 this.accessToken = null;
-                doTokenRequest();
+
+                if(newToken) {
+                    throw new OAuthException("Newly acquired token is still not valid.");
+                } else {
+                    doTokenRequest();
+                }
             } else {
                 throw new HttpClientException(response.getStatusText());
             }
