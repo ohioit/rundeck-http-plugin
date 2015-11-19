@@ -14,12 +14,17 @@ import com.dtolabs.rundeck.plugins.util.DescriptionBuilder;
 import com.dtolabs.rundeck.plugins.util.PropertyBuilder;
 import com.mashape.unirest.http.HttpMethod;
 import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import com.mashape.unirest.http.utils.ResponseUtils;
 import com.mashape.unirest.request.HttpRequest;
 import edu.ohio.ais.rundeck.util.OAuthClient;
+import jdk.nashorn.internal.parser.JSONParser;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -135,7 +140,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         }
         try {
             // We don't really care what the response data is at this point.
-            HttpResponse response = request.asBinary();
+            HttpResponse<String> response = request.asString();
 
             // Sometimes we may need to refresh our OAuth token.
             if(response.getStatus() == OAuthClient.STATUS_AUTHORIZATION_REQUIRED) {
@@ -190,7 +195,11 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                 } else {
                     message += ": " + Integer.toString(response.getStatus()) + " Error";
                 }
-                
+
+                if(response.getBody().length() > 0) {
+                    message += ": " + response.getBody();
+                }
+
                 throw new StepException(message, Reason.HTTPFailure);
             }
         } catch (UnirestException e) {

@@ -7,6 +7,7 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.JSONObject;
 
 /**
  * Simple OAuth client to manage obtaining tokens and providing
@@ -47,6 +48,32 @@ public class OAuthClient {
     String accessToken;
 
     /**
+     * Try and build a reasonable error from the response. We try to
+     * use the optional "error_description" property if it's there, otherwise
+     * we stick with the "error" property, which is required. For
+     * implementations that don't comply with RFC 6749, we'll try to
+     * gracefully return just the status text.
+     *
+     * @param response The HTTP response.
+     * @return Error string
+     */
+    protected String buildError(HttpResponse<JsonNode> response) {
+        String error = response.getStatusText();
+
+        if(!response.getBody().isArray()) {
+            JSONObject body = response.getBody().getObject();
+
+            if (body.has("error_description")) {
+                error += ": " + body.getString("error_description");
+            } else if (body.has("error")) {
+                error += ": " + body.getString("error");
+            }
+        }
+
+        return error;
+    }
+
+    /**
      * Retrieve an access token with our client credentials.
      *
      * @throws UnirestException
@@ -67,7 +94,7 @@ public class OAuthClient {
         if(response.getStatus() == STATUS_SUCCESS) {
             this.accessToken = response.getBody().getObject().getString(FIELD_ACCESS_TOKEN);
         } else {
-            throw new HttpClientException(response.getStatusText());
+            throw new HttpClientException(buildError(response));
         }
 
         this.doTokenValidate(true);
@@ -134,7 +161,7 @@ public class OAuthClient {
                     doTokenRequest();
                 }
             } else {
-                throw new HttpClientException(response.getStatusText());
+                throw new HttpClientException(buildError(response));
             }
         } else {
             log.debug("No validate endpoint exists, skipping validation.");

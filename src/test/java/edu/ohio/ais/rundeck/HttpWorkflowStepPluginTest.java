@@ -22,7 +22,7 @@ public class HttpWorkflowStepPluginTest {
     protected static final String REMOTE_URL = "/trigger";
     protected static final String ERROR_URL_500 = "/error500";
     protected static final String ERROR_URL_401 = "/error401";
-    protected static final String OAUTH_CLIENT_MAP_KEY = OAuthClientTest.CLIENT_ID + "@"
+    protected static final String OAUTH_CLIENT_MAP_KEY = OAuthClientTest.CLIENT_VALID + "@"
             + OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_TOKEN;
 
     protected HttpWorkflowStepPlugin plugin;
@@ -50,7 +50,7 @@ public class HttpWorkflowStepPluginTest {
     public Map<String, Object> getBasicOptions(String method) {
         Map<String, Object> options = getExecutionOptions(method);
 
-        options.put("username", OAuthClientTest.CLIENT_ID);
+        options.put("username", OAuthClientTest.CLIENT_VALID);
         options.put("password", OAuthClientTest.CLIENT_SECRET);
         options.put("authentication", HttpWorkflowStepPlugin.AUTH_BASIC);
 
@@ -89,7 +89,7 @@ public class HttpWorkflowStepPluginTest {
 
             // HTTP Basic
             WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_URL))
-                    .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(OAuthClientTest.CLIENT_ID + ":" + OAuthClientTest.CLIENT_SECRET)))
+                    .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(OAuthClientTest.CLIENT_VALID + ":" + OAuthClientTest.CLIENT_SECRET)))
                     .willReturn(WireMock.aResponse()
                             .withStatus(200)));
 
@@ -206,7 +206,7 @@ public class HttpWorkflowStepPluginTest {
 
         options.put("remoteUrl", OAuthClientTest.BASE_URI + ERROR_URL_401);
         options.put("method", "GET");
-        options.put("username", OAuthClientTest.CLIENT_ID);
+        options.put("username", OAuthClientTest.CLIENT_VALID);
         options.put("password", OAuthClientTest.CLIENT_SECRET);
         options.put("authentication", HttpWorkflowStepPlugin.AUTH_BASIC);
 
@@ -242,8 +242,8 @@ public class HttpWorkflowStepPluginTest {
     @Test(expected = StepException.class)
     public void cannotCallOAuthEndpointWithCredentials() throws StepException {
         Map<String, Object> options = this.getOAuthOptions("GET");
-        options.put("username", OAuthClientTest.INVALID_CLIENT_ID);
-        options.put("password", OAuthClientTest.INVALID_CLIENT_SECRET);
+        options.put("username", OAuthClientTest.CLIENT_INVALID);
+        options.put("password", OAuthClientTest.CLIENT_SECRET);
 
         this.plugin.executeStep(new PluginStepContextImpl(), options);
     }
