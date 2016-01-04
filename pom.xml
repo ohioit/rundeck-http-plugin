@@ -12,7 +12,7 @@
     <description>Perform HTTP requests with authentication as a Rundeck workflow step.</description>
 
     <properties>
-        <rundeckVersion>2.6.0</rundeckVersion>
+        <rundeckVersion>2.6.2</rundeckVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <outputDirectory>${project.build.directory}</outputDirectory>
     </properties>
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>org.rundeck</groupId>
             <artifactId>rundeck-core</artifactId>
-            <version>2.6.1</version>
+            <version>${rundeckVersion}</version>
             <scope>provided</scope>
         </dependency>
 
