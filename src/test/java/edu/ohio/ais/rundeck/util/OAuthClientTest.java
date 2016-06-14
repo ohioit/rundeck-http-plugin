@@ -1,18 +1,19 @@
 package edu.ohio.ais.rundeck.util;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
 import com.dtolabs.client.utils.HttpClientException;
 import com.dtolabs.rundeck.core.utils.Base64;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.mashape.unirest.http.exceptions.UnirestException;
+import org.apache.http.HttpHeaders;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import sun.net.www.http.HttpClient;
+
+import java.io.IOException;
+
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class OAuthClientTest {
     public static final String ACCESS_TOKEN_VALID = "1";
@@ -71,76 +72,76 @@ public class OAuthClientTest {
     public void setUp() {
         // Validate endpoints with a variety of access tokens.
         WireMock.stubFor(WireMock.get(WireMock.urlEqualTo(ENDPOINT_VALIDATE))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Bearer " + ACCESS_TOKEN_VALID))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Bearer " + ACCESS_TOKEN_VALID))
                 .willReturn(WireMock.aResponse()
                         .withStatus(200)
-                        .withHeader("Content-Type", OAuthClient.JSON_CONTENT_TYPE)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, OAuthClient.JSON_CONTENT_TYPE)
                         .withBody("{\"client\": \"" + CLIENT_VALID + "\"}")));
         WireMock.stubFor(WireMock.get(WireMock.urlEqualTo(ENDPOINT_VALIDATE))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Bearer " + ACCESS_TOKEN_CONFUSED_DEPUTY))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Bearer " + ACCESS_TOKEN_CONFUSED_DEPUTY))
                 .willReturn(WireMock.aResponse()
                         .withStatus(200)
-                        .withHeader("Content-Type", OAuthClient.JSON_CONTENT_TYPE)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, OAuthClient.JSON_CONTENT_TYPE)
                         .withBody("{\"client\": \"confused\"}")));
         WireMock.stubFor(WireMock.get(WireMock.urlEqualTo(ENDPOINT_VALIDATE))
-                .withHeader("Authorization", WireMock.equalTo("Bearer " + ACCESS_TOKEN_EXPIRED))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Bearer " + ACCESS_TOKEN_EXPIRED))
                 .willReturn(WireMock.aResponse()
                         .withStatus(401)));
         WireMock.stubFor(WireMock.get(WireMock.urlEqualTo(ENDPOINT_VALIDATE))
-                .withHeader("Authorization", WireMock.equalTo("Bearer " + ACCESS_TOKEN_FOREVER_EXPIRED))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Bearer " + ACCESS_TOKEN_FOREVER_EXPIRED))
                 .willReturn(WireMock.aResponse()
                         .withStatus(401)));
         WireMock.stubFor(WireMock.get(WireMock.urlEqualTo(ENDPOINT_VALIDATE))
-                .withHeader("Authorization", WireMock.equalTo("Bearer " + ACCESS_TOKEN_INVALID))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Bearer " + ACCESS_TOKEN_INVALID))
                 .willReturn(WireMock.aResponse()
                         .withStatus(400)));
 
         // Token endpoints with a variety of access tokens.
         WireMock.stubFor(WireMock.post(WireMock.urlEqualTo(ENDPOINT_TOKEN))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Content-Type", WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(CLIENT_VALID + ":" + CLIENT_SECRET)))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Basic " + Base64.encode(CLIENT_VALID + ":" + CLIENT_SECRET)))
                 .withRequestBody(WireMock.matching(".*grant_type=client_credentials.*"))
                 .willReturn(WireMock.aResponse()
                         .withStatus(200)
-                        .withHeader("Content-Type", OAuthClient.JSON_CONTENT_TYPE)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, OAuthClient.JSON_CONTENT_TYPE)
                         .withBody("{\"access_token\":\"" + ACCESS_TOKEN_VALID + "\",\"token_type\":\"bearer\"}")));
         WireMock.stubFor(WireMock.post(WireMock.urlEqualTo(ENDPOINT_TOKEN))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Content-Type", WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(CLIENT_FOREVER_EXPIRED+ ":" + CLIENT_SECRET)))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Basic " + Base64.encode(CLIENT_FOREVER_EXPIRED+ ":" + CLIENT_SECRET)))
                 .withRequestBody(WireMock.matching(".*grant_type=client_credentials.*"))
                 .willReturn(WireMock.aResponse()
                         .withStatus(200)
-                        .withHeader("Content-Type", OAuthClient.JSON_CONTENT_TYPE)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, OAuthClient.JSON_CONTENT_TYPE)
                         .withBody("{\"access_token\":\"" + ACCESS_TOKEN_VALID + "\",\"token_type\":\"bearer\"}")));
         WireMock.stubFor(WireMock.post(WireMock.urlEqualTo(ENDPOINT_TOKEN))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Content-Type", WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(CLIENT_INVALID + ":" + CLIENT_SECRET)))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Basic " + Base64.encode(CLIENT_INVALID + ":" + CLIENT_SECRET)))
                 .withRequestBody(WireMock.matching(".*grant_type=client_credentials.*"))
                 .willReturn(WireMock.aResponse()
                         .withStatus(401)));
         WireMock.stubFor(WireMock.post(WireMock.urlEqualTo(ENDPOINT_TOKEN))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Content-Type", WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(CLIENT_INVALID_GRANT + ":" + CLIENT_SECRET)))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Basic " + Base64.encode(CLIENT_INVALID_GRANT + ":" + CLIENT_SECRET)))
                 .withRequestBody(WireMock.matching(".*grant_type=client_credentials.*"))
                 .willReturn(WireMock.aResponse()
                         .withStatus(400)
-                        .withHeader("Content-Type", OAuthClient.JSON_CONTENT_TYPE)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, OAuthClient.JSON_CONTENT_TYPE)
                         .withBody("{\"error_description\":\"" + ERROR_UNAUTHORIZED_GRANT_TYPE_DESCRIPTION +
                                 "\",\"error\":\"" + ERROR_UNAUTHORIZED_GRANT_TYPE + "\"}")));
         WireMock.stubFor(WireMock.post(WireMock.urlEqualTo(ENDPOINT_TOKEN))
-                .withHeader("Accept", WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
-                .withHeader("Content-Type", WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
-                .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(CLIENT_INVALID_GRANT_NO_DESCRIPTION + ":" + CLIENT_SECRET)))
+                .withHeader(HttpHeaders.ACCEPT, WireMock.equalTo(OAuthClient.JSON_CONTENT_TYPE))
+                .withHeader(HttpHeaders.CONTENT_TYPE, WireMock.equalTo(OAuthClient.FORM_CONTENT_TYPE))
+                .withHeader(HttpHeaders.AUTHORIZATION, WireMock.equalTo("Basic " + Base64.encode(CLIENT_INVALID_GRANT_NO_DESCRIPTION + ":" + CLIENT_SECRET)))
                 .withRequestBody(WireMock.matching(".*grant_type=client_credentials.*"))
                 .willReturn(WireMock.aResponse()
                         .withStatus(400)
-                        .withHeader("Content-Type", OAuthClient.JSON_CONTENT_TYPE)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, OAuthClient.JSON_CONTENT_TYPE)
                         .withBody("{\"error\":\"" + ERROR_UNAUTHORIZED_GRANT_TYPE + "\"}")));
     }
 
@@ -157,7 +158,7 @@ public class OAuthClientTest {
     }
 
     @Test
-    public void canGetAccessToken() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canGetAccessToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient();
         String token = client.getAccessToken();
 
@@ -166,7 +167,7 @@ public class OAuthClientTest {
     }
 
     @Test
-    public void canInvalidateAccessToken() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canInvalidateAccessToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient();
         client.getAccessToken();
         client.invalidateAccessToken();
@@ -175,7 +176,7 @@ public class OAuthClientTest {
     }
 
     @Test
-    public void canRefreshExpiredAccessToken() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canRefreshExpiredAccessToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_EXPIRED);
         client.doTokenValidate();
 
@@ -183,33 +184,33 @@ public class OAuthClientTest {
     }
 
     @Test(expected = HttpClientException.class)
-    public void canHandleInvalidCredentials() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canHandleInvalidCredentials() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient();
         client.setCredentials(CLIENT_INVALID, CLIENT_SECRET);
         client.getAccessToken();
     }
 
     @Test(expected = HttpClientException.class)
-    public void canHandleInvalidToken() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canHandleInvalidToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_INVALID);
         client.doTokenValidate();
     }
 
     @Test(expected = OAuthClient.OAuthException.class)
-    public void canHandleForeverExpiredToken() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canHandleForeverExpiredToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_FOREVER_EXPIRED);
         client.setCredentials(CLIENT_FOREVER_EXPIRED, CLIENT_SECRET);
         client.doTokenValidate();
     }
 
     @Test(expected = OAuthClient.OAuthException.class)
-    public void canHandleConfusedDeputy() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canHandleConfusedDeputy() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_CONFUSED_DEPUTY);
         client.doTokenValidate();
     }
 
     @Test()
-    public void canHandleMissingValidateEndpoint() throws HttpClientException, UnirestException, OAuthClient.OAuthException {
+    public void canHandleMissingValidateEndpoint() throws HttpClientException, IOException, OAuthClient.OAuthException {
         OAuthClient client = new OAuthClient(OAuthClient.GrantType.CLIENT_CREDENTIALS);
         client.setTokenEndpoint(BASE_URI + ENDPOINT_TOKEN);
         client.setCredentials(CLIENT_VALID, CLIENT_SECRET);
@@ -219,7 +220,7 @@ public class OAuthClientTest {
     }
 
     @Test()
-    public void canBuildErrorWithDescription() throws UnirestException, OAuthClient.OAuthException {
+    public void canBuildErrorWithDescription() throws IOException, OAuthClient.OAuthException {
         OAuthClient client = this.setupClient();
         client.setCredentials(CLIENT_INVALID_GRANT, CLIENT_SECRET);
 
@@ -232,7 +233,7 @@ public class OAuthClientTest {
     }
 
     @Test()
-    public void canBuildErrorWithoutDescription() throws UnirestException, OAuthClient.OAuthException {
+    public void canBuildErrorWithoutDescription() throws IOException, OAuthClient.OAuthException {
         OAuthClient client = this.setupClient();
         client.setCredentials(CLIENT_INVALID_GRANT_NO_DESCRIPTION, CLIENT_SECRET);
 

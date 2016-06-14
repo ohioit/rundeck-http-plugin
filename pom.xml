@@ -6,13 +6,13 @@
 
     <groupId>edu.ohio.ais.rundeck</groupId>
     <artifactId>rundeck-http-plugin</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Perform HTTP requests with authentication as a Rundeck workflow step.</description>
 
     <properties>
-        <rundeckVersion>2.6.2</rundeckVersion>
+        <rundeckVersion>2.6.8</rundeckVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <outputDirectory>${project.build.directory}</outputDirectory>
     </properties>
@@ -27,9 +27,9 @@
 
         <!-- For simple HTTP calls. Other APIs are way too cumbersome. -->
         <dependency>
-            <groupId>com.mashape.unirest</groupId>
-            <artifactId>unirest-java</artifactId>
-            <version>1.4.7</version>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5</version>
         </dependency>
 
         <!-- Mocking the OAuth provider and endpoint servers -->
@@ -112,7 +112,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.7.5.201505241946</version>
+                <version>0.7.7.201606060606</version>
                 <executions>
                     <execution>
                         <goals>
@@ -144,7 +144,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
-                        <version>2.4</version>
+                        <version>3.0</version>
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
@@ -157,7 +157,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>2.10.3</version>
+                        <version>2.10.4</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>

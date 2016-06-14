@@ -12,14 +12,17 @@ import com.dtolabs.rundeck.plugins.step.PluginStepContext;
 import com.dtolabs.rundeck.plugins.step.StepPlugin;
 import com.dtolabs.rundeck.plugins.util.DescriptionBuilder;
 import com.dtolabs.rundeck.plugins.util.PropertyBuilder;
-import com.mashape.unirest.http.HttpMethod;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.exceptions.UnirestException;
-import com.mashape.unirest.request.HttpRequest;
 import edu.ohio.ais.rundeck.util.OAuthClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.RequestBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +39,12 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
      * Maximum number of attempts with which to try the request.
      */
     private static final Integer MAX_ATTEMPTS = 5;
+
+    /**
+     * Default request timeout for execution. This only times out the
+     * request for the URL, not OAuth authentication.
+     */
+    private static final Integer DEFAULT_TIMEOUT = 30*1000;
 
     public static final String SERVICE_PROVIDER_NAME = "edu.ohio.ais.rundeck.HttpWorkflowStepPlugin";
     public static final String[] HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"};
@@ -91,6 +100,12 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                     .values(AUTH_NONE, AUTH_BASIC, AUTH_OAUTH2)
                     .build())
                 .property(PropertyBuilder.builder()
+                    .integer("timeout")
+                    .title("Request Timeout")
+                    .description("How long to wait for a request to complete before failing.")
+                    .defaultValue(DEFAULT_TIMEOUT.toString())
+                    .build())
+                .property(PropertyBuilder.builder()
                     .string("username")
                     .title("Username/Client ID")
                     .description("Username or Client ID to use for authentication.")
@@ -129,17 +144,16 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
      * @param attempts The attempt number
      * @throws StepException Thrown when any error occurs
      */
-    private void doRequest(Map<String, Object> options, HttpRequest request, Integer attempts) throws StepException {
+    private void doRequest(Map<String, Object> options, HttpUriRequest request, Integer attempts) throws StepException {
         if(attempts > MAX_ATTEMPTS) {
             throw new StepException("Unable to complete request after maximum number of attempts.", StepFailureReason.IOFailure);
         }
         try {
-            // We don't really care what the response data is at this point.
-            HttpResponse<String> response = request.asString();
+            HttpResponse response = HttpClients.createDefault().execute(request);
 
             // Sometimes we may need to refresh our OAuth token.
-            if(response.getStatus() == OAuthClient.STATUS_AUTHORIZATION_REQUIRED) {
-                log.debug("Warning: Got authorization required exception from " + request.getUrl());
+            if(response.getStatusLine().getStatusCode() == OAuthClient.STATUS_AUTHORIZATION_REQUIRED) {
+                log.debug("Warning: Got authorization required exception from " + request.getURI());
 
                 // But only if we actually use OAuth for authentication
                 if(options.containsKey("authentication")) {
@@ -170,8 +184,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                         }
 
                         // Build a new request and call `doRequest` again.
-                        request = new HttpRequest(HttpMethod.valueOf(options.get("method").toString()), options.get("remoteUrl").toString());
-                        request.header("Authorization", "Bearer " + accessToken);
+                        request.setHeader("Authorization", "Bearer " + accessToken);
 
                         log.trace("Authentication header set to Bearer " + accessToken);
 
@@ -182,22 +195,23 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                 } else {
                     throw new StepException("Remote URL requires authentication.", StepFailureReason.ConfigurationFailure);
                 }
-            } else if(response.getStatus() >= 400) {
+            } else if(response.getStatusLine().getStatusCode() >= 400) {
                 String message = "Error when sending request";
 
-                if(response.getStatusText().length() > 0) {
-                    message += ": " + response.getStatusText();
+                if(response.getStatusLine().getReasonPhrase().length() > 0) {
+                    message += ": " + response.getStatusLine().getReasonPhrase();
                 } else {
-                    message += ": " + Integer.toString(response.getStatus()) + " Error";
+                    message += ": " + Integer.toString(response.getStatusLine().getStatusCode()) + " Error";
                 }
 
-                if(response.getBody().length() > 0) {
-                    message += ": " + response.getBody();
+                String body = EntityUtils.toString(response.getEntity());
+                if(body.length() > 0) {
+                    message += ": " + body;
                 }
 
                 throw new StepException(message, Reason.HTTPFailure);
             }
-        } catch (UnirestException e) {
+        } catch (IOException e) {
             StepException se = new StepException("Error when sending request: " + e.getMessage(), Reason.HTTPFailure);
             se.initCause(e);
             throw se;
@@ -212,6 +226,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         String remoteUrl = options.containsKey("remoteUrl") ? options.get("remoteUrl").toString() : null;
         String method = options.containsKey("method") ? options.get("method").toString() : null;
         String authentication = options.containsKey("authentication") ? options.get("authentication").toString() : AUTH_NONE;
+        Integer timeout = options.containsKey("timeout") ? Integer.parseInt(options.get("timeout").toString()) : DEFAULT_TIMEOUT;
 
         if(remoteUrl == null || method == null) {
             throw new StepException("Remote URL and Method are required.", StepFailureReason.ConfigurationFailure);
@@ -281,15 +296,21 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         }
 
         // Setup the request and process it.
-        HttpRequest request = new HttpRequest(HttpMethod.valueOf(method), remoteUrl);
+        RequestBuilder request = RequestBuilder.create(method)
+                .setUri(remoteUrl)
+                .setConfig(RequestConfig.custom()
+                        .setConnectionRequestTimeout(timeout)
+                        .setConnectTimeout(timeout)
+                        .setSocketTimeout(timeout)
+                        .build());
 
-        log.debug("Creating HTTP " + request.getHttpMethod() + " request to " + request.getUrl());
+        log.debug("Creating HTTP " + request.getMethod() + " request to " + request.getUri());
 
         if(authHeader != null) {
             log.trace("Authentication header set to " + authHeader);
-            request.header("Authorization", authHeader);
+            request.setHeader("Authorization", authHeader);
         }
 
-        this.doRequest(options, request, 1);
+        this.doRequest(options, request.build(), 1);
     }
 }

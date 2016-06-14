@@ -20,10 +20,14 @@ import static org.junit.Assert.fail;
 
 public class HttpWorkflowStepPluginTest {
     protected static final String REMOTE_URL = "/trigger";
+    protected static final String REMOTE_SLOW_URL= "/slow-trigger";
     protected static final String ERROR_URL_500 = "/error500";
     protected static final String ERROR_URL_401 = "/error401";
     protected static final String OAUTH_CLIENT_MAP_KEY = OAuthClientTest.CLIENT_VALID + "@"
             + OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_TOKEN;
+
+    protected static final int REQUEST_TIMEOUT = 2*1000;
+    protected static final int SLOW_TIMEOUT = 3*1000;
 
     protected HttpWorkflowStepPlugin plugin;
     protected OAuthClientTest oAuthClientTest = new OAuthClientTest();
@@ -115,6 +119,10 @@ public class HttpWorkflowStepPluginTest {
                     .willReturn(WireMock.aResponse()
                             .withStatus(500)));
         }
+
+        // Timeout test
+        WireMock.stubFor(WireMock.request("GET", WireMock.urlEqualTo(REMOTE_SLOW_URL))
+                .willReturn(WireMock.aResponse().withFixedDelay(SLOW_TIMEOUT).withStatus(200)));
     }
 
     @Test()
@@ -161,6 +169,26 @@ public class HttpWorkflowStepPluginTest {
         for(String method : HttpWorkflowStepPlugin.HTTP_METHODS) {
             this.plugin.executeStep(new PluginStepContextImpl(), this.getExecutionOptions(method));
         }
+    }
+
+    @Test()
+    public void canSetCustomTimeout() throws StepException {
+        Map<String, Object> options = new HashMap<>();
+
+        options.put("remoteUrl", OAuthClientTest.BASE_URI + REMOTE_URL);
+        options.put("method", "GET");
+        options.put("timeout", REQUEST_TIMEOUT);
+
+        this.plugin.executeStep(new PluginStepContextImpl(), options);
+
+        try {
+            options.put("remoteUrl", OAuthClientTest.BASE_URI + REMOTE_SLOW_URL);
+            this.plugin.executeStep(new PluginStepContextImpl(), options);
+            fail("Expected exception " + StepException.class.getCanonicalName() + " not thrown.");
+        } catch(StepException se) {}
+
+        options.put("timeout", SLOW_TIMEOUT + 1000);
+        this.plugin.executeStep(new PluginStepContextImpl(), options);
     }
 
     @Test()

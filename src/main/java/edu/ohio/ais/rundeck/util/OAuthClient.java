@@ -1,13 +1,24 @@
 package edu.ohio.ais.rundeck.util;
 
 import com.dtolabs.client.utils.HttpClientException;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.JSONObject;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.RequestBuilder;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Simple OAuth client to manage obtaining tokens and providing
@@ -37,6 +48,9 @@ public class OAuthClient {
         }
     }
 
+    protected HttpClient httpClient;
+    protected ObjectMapper jsonParser = new ObjectMapper();
+
     String clientId;
     String clientSecret;
 
@@ -57,17 +71,22 @@ public class OAuthClient {
      * @param response The HTTP response.
      * @return Error string
      */
-    protected String buildError(HttpResponse<JsonNode> response) {
-        String error = response.getStatusText();
+    protected String buildError(HttpResponse response) {
+        String error = response.getStatusLine().getReasonPhrase();
 
-        if(!response.getBody().isArray()) {
-            JSONObject body = response.getBody().getObject();
+        try {
+            JsonNode data = jsonParser.readTree(EntityUtils.toString(response.getEntity()));
 
-            if (body.has("error_description")) {
-                error += ": " + body.getString("error_description");
-            } else if (body.has("error")) {
-                error += ": " + body.getString("error");
+            if(!data.isArray()) {
+                if (data.has("error_description")) {
+                    error += ": " + data.get("error_description").asText();
+                } else if (data.has("error")) {
+                    error += ": " + data.get("error").asText();
+                }
             }
+        } catch (IOException e) {
+            log.error(e);
+            error += ": Unable to parse error response: " + e.getMessage();
         }
 
         return error;
@@ -76,23 +95,29 @@ public class OAuthClient {
     /**
      * Retrieve an access token with our client credentials.
      *
-     * @throws UnirestException
+     * @throws IOException         When the HTTP request fails for some reason.
      * @throws HttpClientException When a non 200 or 401 status code is returned.
      */
-    void doTokenRequest() throws UnirestException, HttpClientException, OAuthException {
+    void doTokenRequest() throws HttpClientException, OAuthException, IOException {
         this.accessToken = null;
 
         log.debug("Requesting access token from " + this.tokenEndpoint);
 
-        HttpResponse<JsonNode> response = Unirest.post(this.tokenEndpoint)
-                .basicAuth(this.clientId, this.clientSecret)
-                .header("Accept", JSON_CONTENT_TYPE)
-                .header("Content-Type", FORM_CONTENT_TYPE)
-                .field(FIELD_GRANT_TYPE, this.grantType.name().toLowerCase())
-                .asJson();
+        List<NameValuePair> params = new ArrayList<>();
+        params.add(new BasicNameValuePair(FIELD_GRANT_TYPE, this.grantType.name().toLowerCase()));
 
-        if(response.getStatus() == STATUS_SUCCESS) {
-            this.accessToken = response.getBody().getObject().getString(FIELD_ACCESS_TOKEN);
+        HttpUriRequest request = RequestBuilder.create("POST")
+                .setUri(this.tokenEndpoint)
+                .setHeader(HttpHeaders.AUTHORIZATION, "Basic " + com.dtolabs.rundeck.core.utils.Base64.encode(this.clientId + ":" + this.clientSecret))
+                .setHeader(HttpHeaders.ACCEPT, JSON_CONTENT_TYPE)
+                .setHeader(HttpHeaders.CONTENT_TYPE, FORM_CONTENT_TYPE)
+                .setEntity(new UrlEncodedFormEntity(params)).build();
+
+        HttpResponse response = this.httpClient.execute(request);
+
+        if(response.getStatusLine().getStatusCode() == STATUS_SUCCESS) {
+            JsonNode data = jsonParser.readTree(EntityUtils.toString(response.getEntity()));
+            this.accessToken = data.get(FIELD_ACCESS_TOKEN).asText();
         } else {
             throw new HttpClientException(buildError(response));
         }
@@ -115,10 +140,10 @@ public class OAuthClient {
      * </code>
      *
      * @throws HttpClientException When a status code other than 200 of 401 is returned
-     * @throws UnirestException
+     * @throws IOException
      * @throws OAuthException When the Client ID on the token doesn't match our client ID.
      */
-    void doTokenValidate() throws HttpClientException, UnirestException, OAuthException {
+    void doTokenValidate() throws HttpClientException, IOException, OAuthException {
         this.doTokenValidate(false);
     }
 
@@ -130,10 +155,10 @@ public class OAuthClient {
      * @param newToken True if this is a brand new token and we shouldn't try to get
      *                 a new on 401.a
      * @throws HttpClientException
-     * @throws UnirestException
+     * @throws IOException
      * @throws OAuthException
      */
-    void doTokenValidate(Boolean newToken) throws HttpClientException, UnirestException, OAuthException {
+    void doTokenValidate(Boolean newToken) throws HttpClientException, IOException, OAuthException {
         if(this.accessToken == null) {
             this.doTokenRequest();
         }
@@ -141,18 +166,22 @@ public class OAuthClient {
         if(this.validateEndpoint != null) {
             log.debug("Validating access token at " + this.validateEndpoint);
 
-            HttpResponse<JsonNode> response = Unirest.get(this.validateEndpoint)
-                    .header("Authorization", "Bearer " + this.accessToken)
-                    .header("Accept", JSON_CONTENT_TYPE)
-                    .asJson();
+            HttpUriRequest request = RequestBuilder.create("GET")
+                    .setUri(this.validateEndpoint)
+                    .setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + this.accessToken)
+                    .setHeader(HttpHeaders.ACCEPT, JSON_CONTENT_TYPE)
+                    .build();
 
-            if (response.getStatus() == STATUS_SUCCESS) {
-                String clientId = response.getBody().getObject().getString("client");
+            HttpResponse response = this.httpClient.execute(request);
+
+            if (response.getStatusLine().getStatusCode() == STATUS_SUCCESS) {
+                JsonNode data = jsonParser.readTree(EntityUtils.toString(response.getEntity()));
+                String clientId = data.get("client").asText();
 
                 if (!this.clientId.equals(clientId)) {
                     throw new OAuthException("Token received for a client other than us.");
                 }
-            } else if (response.getStatus() == STATUS_AUTHORIZATION_REQUIRED) {
+            } else if (response.getStatusLine().getStatusCode() == STATUS_AUTHORIZATION_REQUIRED) {
                 this.accessToken = null;
 
                 if(newToken) {
@@ -174,6 +203,11 @@ public class OAuthClient {
      * @param grantType
      */
     public OAuthClient(GrantType grantType) {
+        this.httpClient = HttpClientBuilder.create()
+                .disableAuthCaching()
+                .disableAutomaticRetries()
+                .build();
+
         this.grantType = grantType;
     }
 
@@ -223,10 +257,10 @@ public class OAuthClient {
      * @return The access token string.
      *
      * @throws HttpClientException If an HTTP status code we don't handle is returned.
-     * @throws UnirestException
+     * @throws IOException
      * @throws OAuthException If our token is not valid (or other OAuth protocol issues)
      */
-    public String getAccessToken() throws HttpClientException, UnirestException, OAuthException {
+    public String getAccessToken() throws HttpClientException, IOException, OAuthException {
         if(this.accessToken == null) {
             this.doTokenValidate();
         }
