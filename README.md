@@ -10,6 +10,7 @@ based on https://github.com/rvs-fluid-it/rundeck-httppost-plugin.
 - GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
 - Authentication: BASIC or OAuth 2.0
 - Project or Framework level configuration
+- Support for Self Signed SSL Certificates
 
 ## Caveats
 

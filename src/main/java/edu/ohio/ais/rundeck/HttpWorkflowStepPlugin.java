@@ -16,13 +16,20 @@ import edu.ohio.ais.rundeck.util.OAuthClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.TrustStrategy;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -106,6 +113,12 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                     .defaultValue(DEFAULT_TIMEOUT.toString())
                     .build())
                 .property(PropertyBuilder.builder()
+                    .booleanType("sslVerify")
+                    .title("Validate SSL Certificates")
+                    .description("Validate that SSL certificates are trusted, match the hostname, are not expited, etc.")
+                    .defaultValue("true")
+                    .build())
+                .property(PropertyBuilder.builder()
                     .string("username")
                     .title("Username/Client ID")
                     .description("Username or Client ID to use for authentication.")
@@ -136,6 +149,29 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                 .build();
     }
 
+    protected HttpClient getHttpClient(Map<String, Object> options) throws GeneralSecurityException {
+        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
+
+        httpClientBuilder.disableAuthCaching();
+        httpClientBuilder.disableAutomaticRetries();
+
+        if(options.containsKey("sslVerify") && !Boolean.parseBoolean(options.get("sslVerify").toString())) {
+            log.debug("Disabling all SSL certificate verification.");
+            SSLContextBuilder sslContextBuilder = new SSLContextBuilder();
+            sslContextBuilder.loadTrustMaterial(null, new TrustStrategy() {
+                @Override
+                public boolean isTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+                    return true;
+                }
+            });
+
+            httpClientBuilder.setSSLHostnameVerifier(new NoopHostnameVerifier());
+            httpClientBuilder.setSSLContext(sslContextBuilder.build());
+        }
+
+        return httpClientBuilder.build();
+    }
+
     /**
      * Execute a single request. This will call itself if it needs to refresh an OAuth token.
      *
@@ -144,12 +180,12 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
      * @param attempts The attempt number
      * @throws StepException Thrown when any error occurs
      */
-    private void doRequest(Map<String, Object> options, HttpUriRequest request, Integer attempts) throws StepException {
+    protected void doRequest(Map<String, Object> options, HttpUriRequest request, Integer attempts) throws StepException {
         if(attempts > MAX_ATTEMPTS) {
             throw new StepException("Unable to complete request after maximum number of attempts.", StepFailureReason.IOFailure);
         }
         try {
-            HttpResponse response = HttpClients.createDefault().execute(request);
+            HttpResponse response = this.getHttpClient(options).execute(request);
 
             // Sometimes we may need to refresh our OAuth token.
             if(response.getStatusLine().getStatusCode() == OAuthClient.STATUS_AUTHORIZATION_REQUIRED) {
@@ -212,9 +248,13 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                 throw new StepException(message, Reason.HTTPFailure);
             }
         } catch (IOException e) {
-            StepException se = new StepException("Error when sending request: " + e.getMessage(), Reason.HTTPFailure);
-            se.initCause(e);
-            throw se;
+            StepException ese = new StepException("Error when sending request: " + e.getMessage(), Reason.HTTPFailure);
+            ese.initCause(e);
+            throw ese;
+        } catch (GeneralSecurityException se) {
+            StepException sse = new StepException("Error when sending request: " + se.getMessage(), Reason.HTTPFailure);
+            se.initCause(se);
+            throw sse;
         }
     }
 

@@ -6,7 +6,7 @@
 
     <groupId>edu.ohio.ais.rundeck</groupId>
     <artifactId>rundeck-http-plugin</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Perform HTTP requests with authentication as a Rundeck workflow step.</description>
