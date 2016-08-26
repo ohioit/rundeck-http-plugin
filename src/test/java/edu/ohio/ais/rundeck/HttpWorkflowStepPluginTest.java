@@ -4,7 +4,6 @@ import com.dtolabs.rundeck.core.execution.workflow.steps.PluginStepContextImpl;
 import com.dtolabs.rundeck.core.execution.workflow.steps.StepException;
 import com.dtolabs.rundeck.core.execution.workflow.steps.StepFailureReason;
 import com.dtolabs.rundeck.core.plugins.configuration.Description;
-import com.dtolabs.rundeck.core.utils.Base64;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import edu.ohio.ais.rundeck.util.OAuthClientTest;
@@ -20,7 +19,11 @@ import static org.junit.Assert.fail;
 
 public class HttpWorkflowStepPluginTest {
     protected static final String REMOTE_URL = "/trigger";
-    protected static final String REMOTE_SLOW_URL= "/slow-trigger";
+    protected static final String BOGUS_URL = "/bogus";
+    protected static final String REMOTE_BASIC_URL = "/trigger-basic";
+    protected static final String REMOTE_SLOW_URL = "/slow-trigger";
+    protected static final String REMOTE_OAUTH_URL = "/oauth";
+    protected static final String REMOTE_OAUTH_EXPIRED_URL = "/oauth-expired";
     protected static final String ERROR_URL_500 = "/error500";
     protected static final String ERROR_URL_401 = "/error401";
     protected static final String OAUTH_CLIENT_MAP_KEY = OAuthClientTest.CLIENT_VALID + "@"
@@ -69,6 +72,7 @@ public class HttpWorkflowStepPluginTest {
     public Map<String, Object> getOAuthOptions(String method) {
         Map<String, Object> options = getBasicOptions(method);
 
+        options.put("remoteUrl", OAuthClientTest.BASE_URI + REMOTE_OAUTH_URL);
         options.put("oauthTokenEndpoint", OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_TOKEN);
         options.put("oauthValidateEndpoint", OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_VALIDATE);
         options.put("authentication", HttpWorkflowStepPlugin.AUTH_OAUTH2);
@@ -92,13 +96,13 @@ public class HttpWorkflowStepPluginTest {
                             .withStatus(200)));
 
             // HTTP Basic
-            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_URL))
-                    .withHeader("Authorization", WireMock.equalTo("Basic " + Base64.encode(OAuthClientTest.CLIENT_VALID + ":" + OAuthClientTest.CLIENT_SECRET)))
+            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_BASIC_URL))
+                    .withBasicAuth(OAuthClientTest.CLIENT_VALID, OAuthClientTest.CLIENT_SECRET)
                     .willReturn(WireMock.aResponse()
                             .withStatus(200)));
 
             // OAuth with a fresh token
-            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_URL))
+            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_OAUTH_URL))
                     .withHeader("Authorization", WireMock.equalTo("Bearer " + OAuthClientTest.ACCESS_TOKEN_VALID))
                     .willReturn(WireMock.aResponse()
                             .withStatus(200)));
@@ -109,16 +113,24 @@ public class HttpWorkflowStepPluginTest {
                             .withStatus(401)));
 
             // OAuth with an expired token
-            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_URL))
+            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_OAUTH_EXPIRED_URL))
                     .withHeader("Authorization", WireMock.equalTo("Bearer " + OAuthClientTest.ACCESS_TOKEN_EXPIRED))
                     .willReturn(WireMock.aResponse()
                             .withStatus(401)));
+            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(REMOTE_OAUTH_EXPIRED_URL))
+                    .withHeader("Authorization", WireMock.equalTo("Bearer " + OAuthClientTest.ACCESS_TOKEN_VALID))
+                    .willReturn(WireMock.aResponse()
+                            .withStatus(200)));
 
             // 500 Error
             WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(ERROR_URL_500))
                     .willReturn(WireMock.aResponse()
                             .withStatus(500)));
         }
+
+        // Simple bogus URL that yields a 404
+        WireMock.stubFor(WireMock.request("GET", WireMock.urlEqualTo(BOGUS_URL))
+                        .willReturn(WireMock.aResponse().withStatus(404)));
 
         // Timeout test
         WireMock.stubFor(WireMock.request("GET", WireMock.urlEqualTo(REMOTE_SLOW_URL))
@@ -194,7 +206,10 @@ public class HttpWorkflowStepPluginTest {
     @Test()
     public void canCallBasicEndpoint() throws StepException {
         for(String method : HttpWorkflowStepPlugin.HTTP_METHODS) {
-            this.plugin.executeStep(new PluginStepContextImpl(), this.getBasicOptions(method));
+            Map<String, Object> options = this.getBasicOptions(method);
+            options.put("remoteUrl", OAuthClientTest.BASE_URI + REMOTE_BASIC_URL);
+
+            this.plugin.executeStep(new PluginStepContextImpl(), options);
         }
     }
 
@@ -212,7 +227,7 @@ public class HttpWorkflowStepPluginTest {
     public void canHandleBadUrl() throws StepException {
         Map<String, Object> options = new HashMap<>();
 
-        options.put("remoteUrl", OAuthClientTest.BASE_URI + "/bogus");
+        options.put("remoteUrl", OAuthClientTest.BASE_URI + BOGUS_URL);
         options.put("method", "GET");
 
         this.plugin.executeStep(new PluginStepContextImpl(), options);
@@ -263,7 +278,10 @@ public class HttpWorkflowStepPluginTest {
         this.plugin.oauthClients.put(OAUTH_CLIENT_MAP_KEY, this.oAuthClientTest.setupClient(OAuthClientTest.ACCESS_TOKEN_EXPIRED));
 
         for(String method : HttpWorkflowStepPlugin.HTTP_METHODS) {
-            this.plugin.executeStep(new PluginStepContextImpl(), this.getOAuthOptions(method));
+            Map<String, Object> options = this.getOAuthOptions(method);
+            options.put("remoteUrl", OAuthClientTest.BASE_URI + REMOTE_OAUTH_EXPIRED_URL);
+
+            this.plugin.executeStep(new PluginStepContextImpl(), options);
         }
     }
 
@@ -278,13 +296,9 @@ public class HttpWorkflowStepPluginTest {
 
     @Test(expected = StepException.class)
     public void canHandle500ErrorWithOAuth() throws StepException {
-        Map<String, Object> options = new HashMap<>();
+        Map<String, Object> options = getOAuthOptions("GET");
 
         options.put("remoteUrl", OAuthClientTest.BASE_URI + ERROR_URL_500);
-        options.put("method", "GET");
-        options.put("oauthTokenEndpoint", OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_TOKEN);
-        options.put("oauthValidateEndpoint", OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_VALIDATE);
-        options.put("authentication", HttpWorkflowStepPlugin.AUTH_OAUTH2);
 
         this.plugin.executeStep(new PluginStepContextImpl(), options);
     }
