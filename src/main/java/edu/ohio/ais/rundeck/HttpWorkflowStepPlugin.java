@@ -282,6 +282,9 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
             }
 
             authHeader = username + ":" + password;
+            
+            //As per RFC2617 the Basic Authentication standard has to send the credentials Base64 encoded. 
+            authHeader = "Basic " + com.dtolabs.rundeck.core.utils.Base64.encode(authHeader);
         } else if (authentication.equals(AUTH_OAUTH2)) {
             // Get an OAuth token and setup the auth header for OAuth
             String tokenEndpoint = options.containsKey("oauthTokenEndpoint") ? options.get("oauthTokenEndpoint").toString() : null;
