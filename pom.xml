@@ -6,13 +6,13 @@
 
     <groupId>edu.ohio.ais.rundeck</groupId>
     <artifactId>rundeck-http-plugin</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Perform HTTP requests with authentication as a Rundeck workflow step.</description>
 
     <properties>
-        <rundeckVersion>2.6.8</rundeckVersion>
+        <rundeckVersion>2.7.1</rundeckVersion>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <outputDirectory>${project.build.directory}</outputDirectory>
     </properties>
@@ -35,8 +35,8 @@
         <!-- Mocking the OAuth provider and endpoint servers -->
         <dependency>
             <groupId>com.github.tomakehurst</groupId>
-            <artifactId>wiremock</artifactId>
-            <version>2.1.11</version>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>2.5.1</version>
             <scope>test</scope>
         </dependency>
 

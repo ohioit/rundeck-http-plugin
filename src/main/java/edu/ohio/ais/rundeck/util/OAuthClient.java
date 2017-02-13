@@ -1,6 +1,5 @@
 package edu.ohio.ais.rundeck.util;
 
-import com.dtolabs.client.utils.HttpClientException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
@@ -9,6 +8,7 @@ import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.HttpResponseException;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
@@ -96,9 +96,9 @@ public class OAuthClient {
      * Retrieve an access token with our client credentials.
      *
      * @throws IOException         When the HTTP request fails for some reason.
-     * @throws HttpClientException When a non 200 or 401 status code is returned.
+     * @throws HttpResponseException When a non 200 or 401 status code is returned.
      */
-    void doTokenRequest() throws HttpClientException, OAuthException, IOException {
+    void doTokenRequest() throws HttpResponseException, OAuthException, IOException {
         this.accessToken = null;
 
         log.debug("Requesting access token from " + this.tokenEndpoint);
@@ -119,7 +119,7 @@ public class OAuthClient {
             JsonNode data = jsonParser.readTree(EntityUtils.toString(response.getEntity()));
             this.accessToken = data.get(FIELD_ACCESS_TOKEN).asText();
         } else {
-            throw new HttpClientException(buildError(response));
+            throw new HttpResponseException(response.getStatusLine().getStatusCode(), buildError(response));
         }
 
         this.doTokenValidate(true);
@@ -139,11 +139,11 @@ public class OAuthClient {
      *     }
      * </code>
      *
-     * @throws HttpClientException When a status code other than 200 of 401 is returned
+     * @throws HttpResponseException When a status code other than 200 of 401 is returned
      * @throws IOException
      * @throws OAuthException When the Client ID on the token doesn't match our client ID.
      */
-    void doTokenValidate() throws HttpClientException, IOException, OAuthException {
+    void doTokenValidate() throws HttpResponseException, IOException, OAuthException {
         this.doTokenValidate(false);
     }
 
@@ -154,11 +154,11 @@ public class OAuthClient {
      *
      * @param newToken True if this is a brand new token and we shouldn't try to get
      *                 a new on 401.a
-     * @throws HttpClientException
+     * @throws HttpResponseException
      * @throws IOException
      * @throws OAuthException
      */
-    void doTokenValidate(Boolean newToken) throws HttpClientException, IOException, OAuthException {
+    void doTokenValidate(Boolean newToken) throws HttpResponseException, IOException, OAuthException {
         if(this.accessToken == null) {
             this.doTokenRequest();
         }
@@ -190,7 +190,7 @@ public class OAuthClient {
                     doTokenRequest();
                 }
             } else {
-                throw new HttpClientException(buildError(response));
+                throw new HttpResponseException(response.getStatusLine().getStatusCode(), buildError(response));
             }
         } else {
             log.debug("No validate endpoint exists, skipping validation.");
@@ -256,11 +256,11 @@ public class OAuthClient {
      *
      * @return The access token string.
      *
-     * @throws HttpClientException If an HTTP status code we don't handle is returned.
+     * @throws HttpResponseException If an HTTP status code we don't handle is returned.
      * @throws IOException
      * @throws OAuthException If our token is not valid (or other OAuth protocol issues)
      */
-    public String getAccessToken() throws HttpClientException, IOException, OAuthException {
+    public String getAccessToken() throws HttpResponseException, IOException, OAuthException {
         if(this.accessToken == null) {
             this.doTokenValidate();
         }

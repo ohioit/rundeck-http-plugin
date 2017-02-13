@@ -1,10 +1,10 @@
 package edu.ohio.ais.rundeck.util;
 
-import com.dtolabs.client.utils.HttpClientException;
 import com.dtolabs.rundeck.core.utils.Base64;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.apache.http.HttpHeaders;
+import org.apache.http.client.HttpResponseException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -158,7 +158,7 @@ public class OAuthClientTest {
     }
 
     @Test
-    public void canGetAccessToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    public void canGetAccessToken() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient();
         String token = client.getAccessToken();
 
@@ -167,7 +167,7 @@ public class OAuthClientTest {
     }
 
     @Test
-    public void canInvalidateAccessToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    public void canInvalidateAccessToken() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient();
         client.getAccessToken();
         client.invalidateAccessToken();
@@ -176,41 +176,41 @@ public class OAuthClientTest {
     }
 
     @Test
-    public void canRefreshExpiredAccessToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    public void canRefreshExpiredAccessToken() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_EXPIRED);
         client.doTokenValidate();
 
         assertEquals(client.accessToken, ACCESS_TOKEN_VALID);
     }
 
-    @Test(expected = HttpClientException.class)
-    public void canHandleInvalidCredentials() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    @Test(expected = HttpResponseException.class)
+    public void canHandleInvalidCredentials() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient();
         client.setCredentials(CLIENT_INVALID, CLIENT_SECRET);
         client.getAccessToken();
     }
 
-    @Test(expected = HttpClientException.class)
-    public void canHandleInvalidToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    @Test(expected = HttpResponseException.class)
+    public void canHandleInvalidToken() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_INVALID);
         client.doTokenValidate();
     }
 
     @Test(expected = OAuthClient.OAuthException.class)
-    public void canHandleForeverExpiredToken() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    public void canHandleForeverExpiredToken() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_FOREVER_EXPIRED);
         client.setCredentials(CLIENT_FOREVER_EXPIRED, CLIENT_SECRET);
         client.doTokenValidate();
     }
 
     @Test(expected = OAuthClient.OAuthException.class)
-    public void canHandleConfusedDeputy() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    public void canHandleConfusedDeputy() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = setupClient(ACCESS_TOKEN_CONFUSED_DEPUTY);
         client.doTokenValidate();
     }
 
     @Test()
-    public void canHandleMissingValidateEndpoint() throws HttpClientException, IOException, OAuthClient.OAuthException {
+    public void canHandleMissingValidateEndpoint() throws HttpResponseException, IOException, OAuthClient.OAuthException {
         OAuthClient client = new OAuthClient(OAuthClient.GrantType.CLIENT_CREDENTIALS);
         client.setTokenEndpoint(BASE_URI + ENDPOINT_TOKEN);
         client.setCredentials(CLIENT_VALID, CLIENT_SECRET);
@@ -226,7 +226,7 @@ public class OAuthClientTest {
 
         try {
             client.doTokenRequest();
-        } catch(HttpClientException hce) {
+        } catch(HttpResponseException hce) {
             assertTrue(hce.getMessage().contains(ERROR_UNAUTHORIZED_GRANT_TYPE_DESCRIPTION));
             assertFalse(hce.getMessage().contains(ERROR_UNAUTHORIZED_GRANT_TYPE));
         }
@@ -239,7 +239,7 @@ public class OAuthClientTest {
 
         try {
             client.doTokenRequest();
-        } catch(HttpClientException hce) {
+        } catch(HttpResponseException hce) {
             assertFalse(hce.getMessage().contains(ERROR_UNAUTHORIZED_GRANT_TYPE_DESCRIPTION));
             assertTrue(hce.getMessage().contains(ERROR_UNAUTHORIZED_GRANT_TYPE));
         }
