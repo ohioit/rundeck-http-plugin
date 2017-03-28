@@ -161,39 +161,39 @@ public class OAuthClient {
     void doTokenValidate(Boolean newToken) throws HttpResponseException, IOException, OAuthException {
         if(this.accessToken == null) {
             this.doTokenRequest();
-        }
+        } else {
+            if (this.validateEndpoint != null) {
+                log.debug("Validating access token at " + this.validateEndpoint);
 
-        if(this.validateEndpoint != null) {
-            log.debug("Validating access token at " + this.validateEndpoint);
+                HttpUriRequest request = RequestBuilder.create("GET")
+                        .setUri(this.validateEndpoint)
+                        .setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + this.accessToken)
+                        .setHeader(HttpHeaders.ACCEPT, JSON_CONTENT_TYPE)
+                        .build();
 
-            HttpUriRequest request = RequestBuilder.create("GET")
-                    .setUri(this.validateEndpoint)
-                    .setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + this.accessToken)
-                    .setHeader(HttpHeaders.ACCEPT, JSON_CONTENT_TYPE)
-                    .build();
+                HttpResponse response = this.httpClient.execute(request);
 
-            HttpResponse response = this.httpClient.execute(request);
+                if (response.getStatusLine().getStatusCode() == STATUS_SUCCESS) {
+                    JsonNode data = jsonParser.readTree(EntityUtils.toString(response.getEntity()));
+                    String clientId = data.get("client").asText();
 
-            if (response.getStatusLine().getStatusCode() == STATUS_SUCCESS) {
-                JsonNode data = jsonParser.readTree(EntityUtils.toString(response.getEntity()));
-                String clientId = data.get("client").asText();
+                    if (!this.clientId.equals(clientId)) {
+                        throw new OAuthException("Token received for a client other than us.");
+                    }
+                } else if (response.getStatusLine().getStatusCode() == STATUS_AUTHORIZATION_REQUIRED) {
+                    this.accessToken = null;
 
-                if (!this.clientId.equals(clientId)) {
-                    throw new OAuthException("Token received for a client other than us.");
-                }
-            } else if (response.getStatusLine().getStatusCode() == STATUS_AUTHORIZATION_REQUIRED) {
-                this.accessToken = null;
-
-                if(newToken) {
-                    throw new OAuthException("Newly acquired token is still not valid.");
+                    if (newToken) {
+                        throw new OAuthException("Newly acquired token is still not valid.");
+                    } else {
+                        doTokenRequest();
+                    }
                 } else {
-                    doTokenRequest();
+                    throw new HttpResponseException(response.getStatusLine().getStatusCode(), buildError(response));
                 }
             } else {
-                throw new HttpResponseException(response.getStatusLine().getStatusCode(), buildError(response));
+                log.debug("No validate endpoint exists, skipping validation.");
             }
-        } else {
-            log.debug("No validate endpoint exists, skipping validation.");
         }
     }
 

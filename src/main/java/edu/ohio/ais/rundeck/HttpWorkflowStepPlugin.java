@@ -20,6 +20,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
+import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -63,7 +64,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
      * Synchronized map of all existing OAuth clients. This is indexed by
      * the Client ID and the token URL so that we can store and re-use access tokens.
      */
-    final Map<String, OAuthClient> oauthClients = Collections.synchronizedMap(new HashMap<String, OAuthClient>());
+    final static Map<String, OAuthClient> oauthClients = Collections.synchronizedMap(new HashMap<String, OAuthClient>());
 
     private enum Reason implements FailureReason {
         OAuthFailure,   // Failure from the OAuth protocol
@@ -150,8 +151,12 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
     }
 
     protected HttpClient getHttpClient(Map<String, Object> options) throws GeneralSecurityException {
+        SocketConfig socketConfig = SocketConfig.custom()
+                .setSoKeepAlive(true).build();
+
         HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
 
+        httpClientBuilder.setDefaultSocketConfig(socketConfig);
         httpClientBuilder.disableAuthCaching();
         httpClientBuilder.disableAutomaticRetries();
 
@@ -200,10 +205,10 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                         String accessToken;
 
                         // Another thread might be trying to do the same thing.
-                        synchronized(this.oauthClients) {
+                        synchronized(HttpWorkflowStepPlugin.oauthClients) {
                             String clientKey = options.get("username").toString() + "@" + options.get("oauthTokenEndpoint").toString();
 
-                            OAuthClient client = this.oauthClients.get(clientKey);
+                            OAuthClient client = HttpWorkflowStepPlugin.oauthClients.get(clientKey);
                             client.invalidateAccessToken();
 
                             try {
@@ -216,7 +221,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                             }
 
                             // Don't forget to update the client map in case something changed
-                            this.oauthClients.put(clientKey, client);
+                            HttpWorkflowStepPlugin.oauthClients.put(clientKey, client);
                         }
 
                         // Build a new request and call `doRequest` again.
@@ -301,15 +306,15 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
             String accessToken;
 
             // Another thread may be trying to do the same thing.
-            synchronized(this.oauthClients) {
+            synchronized(HttpWorkflowStepPlugin.oauthClients) {
                 OAuthClient client;
 
-                if(this.oauthClients.containsKey(clientKey)) {
+                if(HttpWorkflowStepPlugin.oauthClients.containsKey(clientKey)) {
                     // Update the existing client with our options if it exists.
                     // We do this so that changes to configuration will always
                     // update clients on next run.
                     log.trace("Found existing OAuth client with key " + clientKey);
-                    client = this.oauthClients.get(clientKey);
+                    client = HttpWorkflowStepPlugin.oauthClients.get(clientKey);
                     client.setCredentials(clientId, clientSecret);
                     client.setValidateEndpoint(validateEndpoint);
                 } else {
@@ -332,7 +337,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                     throw se;
                 }
 
-                this.oauthClients.put(clientKey, client);
+                HttpWorkflowStepPlugin.oauthClients.put(clientKey, client);
             }
 
             authHeader = "Bearer " + accessToken;

@@ -6,7 +6,7 @@
 
     <groupId>edu.ohio.ais.rundeck</groupId>
     <artifactId>rundeck-http-plugin</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Perform HTTP requests with authentication as a Rundeck workflow step.</description>
@@ -53,8 +53,8 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
             <plugin>

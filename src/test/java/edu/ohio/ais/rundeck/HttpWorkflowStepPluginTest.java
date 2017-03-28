@@ -11,11 +11,15 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class HttpWorkflowStepPluginTest {
     protected static final String REMOTE_URL = "/trigger";
@@ -87,6 +91,10 @@ public class HttpWorkflowStepPluginTest {
     public void setUp() {
         plugin = new HttpWorkflowStepPlugin();
         oAuthClientTest.setUp(); // We need to setup the OAuth endpoints too.
+
+        synchronized(HttpWorkflowStepPlugin.oauthClients) {
+            HttpWorkflowStepPlugin.oauthClients.clear();
+        }
 
         // Test all endpoints by simply iterating.
         for(String method : HttpWorkflowStepPlugin.HTTP_METHODS) {
@@ -275,7 +283,7 @@ public class HttpWorkflowStepPluginTest {
 
     @Test()
     public void canCallOAuthEndpointWithExpiredToken() throws StepException {
-        this.plugin.oauthClients.put(OAUTH_CLIENT_MAP_KEY, this.oAuthClientTest.setupClient(OAuthClientTest.ACCESS_TOKEN_EXPIRED));
+        HttpWorkflowStepPlugin.oauthClients.put(OAUTH_CLIENT_MAP_KEY, this.oAuthClientTest.setupClient(OAuthClientTest.ACCESS_TOKEN_EXPIRED));
 
         for(String method : HttpWorkflowStepPlugin.HTTP_METHODS) {
             Map<String, Object> options = this.getOAuthOptions(method);
@@ -301,5 +309,31 @@ public class HttpWorkflowStepPluginTest {
         options.put("remoteUrl", OAuthClientTest.BASE_URI + ERROR_URL_500);
 
         this.plugin.executeStep(new PluginStepContextImpl(), options);
+    }
+
+    @Test()
+    public void canHandleMultipleThreads() throws ExecutionException, InterruptedException {
+        ExecutorService executor = Executors.newFixedThreadPool(HttpWorkflowStepPlugin.HTTP_METHODS.length);
+        ArrayList<Future<Boolean>> results = new ArrayList<>();
+
+        for(String method : HttpWorkflowStepPlugin.HTTP_METHODS) {
+            results.add(executor.submit(() -> {
+                HttpWorkflowStepPlugin threadedPlugin = new HttpWorkflowStepPlugin();
+
+                try {
+                    threadedPlugin.executeStep(new PluginStepContextImpl(), this.getOAuthOptions(method));
+                    return true;
+                } catch(StepException se) {
+                    se.printStackTrace();
+                    return false;
+                }
+            }));
+        }
+
+        assertEquals(HttpWorkflowStepPlugin.HTTP_METHODS.length, results.size());
+
+        for(Future<Boolean> result : results) {
+            assertTrue(result.get());
+        }
     }
 }
