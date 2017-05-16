@@ -21,6 +21,7 @@ import edu.ohio.ais.rundeck.util.OAuthClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
@@ -213,6 +214,27 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                         .required(false)
                         .renderingOption(StringRenderingConstants.GROUP_NAME,"Print")
                         .build())
+                .property(PropertyBuilder.builder()
+                        .booleanType("proxySettings")
+                        .title("Use Proxy Settings?")
+                        .description("Set if you want to use a proxy.")
+                        .defaultValue("false")
+                        .renderingOption(StringRenderingConstants.GROUP_NAME,"Proxy Settings")
+                        .build())
+                .property(PropertyBuilder.builder()
+                        .string("proxyIP")
+                        .title("Proxy IP")
+                        .description("Proxy to use for this request")
+                        .required(false)
+                        .renderingOption(StringRenderingConstants.GROUP_NAME,"Proxy Settings")
+                        .build())
+                .property(PropertyBuilder.builder()
+                        .integer("proxyPort")
+                        .title("Proxy Port")
+                        .description("Proxy port to use for this request")
+                        .renderingOption(StringRenderingConstants.GROUP_NAME,"Proxy Settings")
+                        .required(false)
+                        .build())
                 .build();
     }
 
@@ -234,6 +256,10 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
 
             httpClientBuilder.setSSLHostnameVerifier(new NoopHostnameVerifier());
             httpClientBuilder.setSSLContext(sslContextBuilder.build());
+        }
+        if(options.containsKey("proxySettings") && Boolean.parseBoolean(options.get("proxySettings").toString())){
+        	HttpHost proxy = new HttpHost(options.get("proxyIP").toString(), Integer.valueOf((String)options.get("proxyPort")), "http");
+        	httpClientBuilder.setProxy(proxy);
         }
 
         return httpClientBuilder.build();
