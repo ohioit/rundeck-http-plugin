@@ -410,6 +410,11 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
             remoteUrl = DataContextUtils.replaceDataReferences(remoteUrl, pluginStepContext.getDataContext());
         }
 
+        //Use options in body
+        if (null != body && body.contains("${")) {
+            body = DataContextUtils.replaceDataReferences(body, pluginStepContext.getDataContext());
+        }
+
         //moving the password to the key storage
         String password=null;
 
