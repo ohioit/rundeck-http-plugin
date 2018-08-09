@@ -25,12 +25,14 @@ import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.ContentType;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
@@ -238,7 +240,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                 .build();
     }
 
-    protected HttpClient getHttpClient(Map<String, Object> options) throws GeneralSecurityException {
+    protected CloseableHttpClient getHttpClient(Map<String, Object> options) throws GeneralSecurityException {
         HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
 
         httpClientBuilder.disableAuthCaching();
@@ -277,8 +279,9 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         if(attempts > MAX_ATTEMPTS) {
             throw new StepException("Unable to complete request after maximum number of attempts.", StepFailureReason.IOFailure);
         }
+        CloseableHttpResponse response = null;
         try {
-            HttpResponse response = this.getHttpClient(options).execute(request);
+            response = this.getHttpClient(options).execute(request);
 
             //print the response content
             if(options.containsKey("printResponse") && Boolean.parseBoolean(options.get("printResponse").toString()) ||
@@ -386,6 +389,14 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
             StepException sse = new StepException("Error when sending request: " + se.getMessage(), Reason.HTTPFailure);
             se.initCause(se);
             throw sse;
+        } finally {
+            if (response != null) {
+                try {
+                    response.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -586,17 +597,20 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         if ( reponseEntity != null ) {
             try {
                 rd = new BufferedReader(new InputStreamReader(reponseEntity.getContent()));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            String line = "";
-            try {
+                String line = "";
                 while ((line = rd.readLine()) != null) {
                     result.append(line);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                if (rd != null) {
+                    try {
+                        rd.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
         }
 
