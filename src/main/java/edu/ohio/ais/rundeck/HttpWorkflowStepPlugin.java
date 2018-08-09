@@ -580,21 +580,24 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
     private StringBuffer getPageContent(HttpResponse response) {
 
         BufferedReader rd = null;
-        try {
-            rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        HttpEntity reponseEntity = response.getEntity();
         StringBuffer result = new StringBuffer();
 
-        String line = "";
-        try {
-            while ((line = rd.readLine()) != null) {
-                result.append(line);
+        if ( reponseEntity != null ) {
+            try {
+                rd = new BufferedReader(new InputStreamReader(reponseEntity.getContent()));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+            String line = "";
+            try {
+                while ((line = rd.readLine()) != null) {
+                    result.append(line);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         return result;
