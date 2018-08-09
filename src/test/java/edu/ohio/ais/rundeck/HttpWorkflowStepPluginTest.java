@@ -26,6 +26,7 @@ public class HttpWorkflowStepPluginTest {
     protected static final String REMOTE_OAUTH_EXPIRED_URL = "/oauth-expired";
     protected static final String ERROR_URL_500 = "/error500";
     protected static final String ERROR_URL_401 = "/error401";
+    protected static final String NO_CONTENT_URL = "/nocontent204";
     protected static final String OAUTH_CLIENT_MAP_KEY = OAuthClientTest.CLIENT_VALID + "@"
             + OAuthClientTest.BASE_URI + OAuthClientTest.ENDPOINT_TOKEN;
 
@@ -126,6 +127,11 @@ public class HttpWorkflowStepPluginTest {
             WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(ERROR_URL_500))
                     .willReturn(WireMock.aResponse()
                             .withStatus(500)));
+
+            // 204 No Content
+            WireMock.stubFor(WireMock.request(method, WireMock.urlEqualTo(NO_CONTENT_URL))
+                    .willReturn(WireMock.aResponse()
+                            .withStatus(204)));
         }
 
         // Simple bogus URL that yields a 404
@@ -299,6 +305,18 @@ public class HttpWorkflowStepPluginTest {
         Map<String, Object> options = getOAuthOptions("GET");
 
         options.put("remoteUrl", OAuthClientTest.BASE_URI + ERROR_URL_500);
+
+        this.plugin.executeStep(new PluginStepContextImpl(), options);
+    }
+
+    @Test
+    public void canPrintNoContent() throws StepException {
+        Map<String, Object> options = new HashMap<>();
+
+        options.put("remoteUrl", OAuthClientTest.BASE_URI + NO_CONTENT_URL);
+        options.put("method", "GET");
+        options.put("printResponse",true);
+        options.put("printResponseToFile",false);
 
         this.plugin.executeStep(new PluginStepContextImpl(), options);
     }
