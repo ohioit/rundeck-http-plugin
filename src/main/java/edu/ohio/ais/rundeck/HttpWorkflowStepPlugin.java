@@ -592,6 +592,7 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         try {
             while ((line = rd.readLine()) != null) {
                 result.append(line);
+                result.append(System.getProperty("line.separator"));
             }
         } catch (IOException e) {
             e.printStackTrace();

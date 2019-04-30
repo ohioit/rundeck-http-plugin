@@ -14,6 +14,8 @@
 # Maven
 log/
 target/
+.gradle/
+build/
 
 # Integration tests
 build.log
