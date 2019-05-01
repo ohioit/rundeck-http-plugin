@@ -12,7 +12,7 @@ ext.pluginName = 'Http Step'
 ext.pluginDescription = 'A workflow plugin that makes HTTP requests'
 
 scmVersion {
-    ignoreUncommittedChanges = false
+    ignoreUncommittedChanges = true
     tag {
         prefix = ''
         versionSeparator = ''
@@ -71,7 +71,7 @@ jar {
 
         attributes 'Rundeck-Plugin-Classnames': pluginClassNames
         attributes 'Rundeck-Plugin-File-Version': version
-        attributes 'Rundeck-Plugin-Name': '${pluginName}'
+        attributes 'Rundeck-Plugin-Name': pluginName
         attributes 'Rundeck-Plugin-Description': pluginDescription
         attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '3.x'
         attributes 'Rundeck-Plugin-Tags': 'java,WorkflowStep'
