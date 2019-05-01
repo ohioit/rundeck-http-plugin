@@ -16,6 +16,7 @@ log/
 target/
 .gradle/
 build/
+out/
 
 # Integration tests
 build.log
