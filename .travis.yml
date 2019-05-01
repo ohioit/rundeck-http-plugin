@@ -7,18 +7,18 @@ before_install:
 after_success:
   - codecov
 script:
-   - mvn clean test install -P release
+  - gradle clean build
 env:
   global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "MULgeNJYgVa+lRZYEj6l7BoGAuxOabW7G4d/4U9kdJwtEwIGoj7/n0GIPJmTBiCqE8i4l++BYk6jvgWmvGUjBn/cjcjmqmp+1itbl2msYOJwOtyOZbvZGhU14a3UyxlnY7bHCVC8IBQO27ajw/2fkljCLw2phLgSw17gnSPmXhxuF0ZyI6M+MVOKvvtvTSxjThA1YUX6v8FisEBqLuk02FOFqKrmoBvydCNJyZpXKT5YU3eI3TEXwJ7wRouwS3WZf4s+NzfjvvkvjWRnHyredjgKucAmSkUHqHHVvYeNlpFIJtCFfLOrUPE/X90QZI13QBptN5zPFtDYyXn9I7JgB9jDIYrv2qc2gAVGSBUQSdgig/DiUTVDNH0I0GLbkUuT5xTKsZMItomHoLr+89d/PKbUEovz3pmBM05axmG2kfoj19wsVdkT9L3oLaWjdGmNZcPr+YNpdnDdiEp/DSraABFz+lpsecliR8oBXnSImEq4IGVw0R6ir3VZg5rLVJ/0u5w5XKUyuZOG9zk4IWowsD4r28Mga9H50N50qc2hA/7J7bGLD2E/n5iB7jcaOs9FC5bUQHN2LAHVwbEEXZJjekCfPlltZhoXVvlXbUwNuQ1KQgtE0pTvG8Xu0n2CN8MMZ2Pm07ZYKwBquat4hXbtMtqxJpl4ngviS6XjxquGRA8="
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - secure: "MULgeNJYgVa+lRZYEj6l7BoGAuxOabW7G4d/4U9kdJwtEwIGoj7/n0GIPJmTBiCqE8i4l++BYk6jvgWmvGUjBn/cjcjmqmp+1itbl2msYOJwOtyOZbvZGhU14a3UyxlnY7bHCVC8IBQO27ajw/2fkljCLw2phLgSw17gnSPmXhxuF0ZyI6M+MVOKvvtvTSxjThA1YUX6v8FisEBqLuk02FOFqKrmoBvydCNJyZpXKT5YU3eI3TEXwJ7wRouwS3WZf4s+NzfjvvkvjWRnHyredjgKucAmSkUHqHHVvYeNlpFIJtCFfLOrUPE/X90QZI13QBptN5zPFtDYyXn9I7JgB9jDIYrv2qc2gAVGSBUQSdgig/DiUTVDNH0I0GLbkUuT5xTKsZMItomHoLr+89d/PKbUEovz3pmBM05axmG2kfoj19wsVdkT9L3oLaWjdGmNZcPr+YNpdnDdiEp/DSraABFz+lpsecliR8oBXnSImEq4IGVw0R6ir3VZg5rLVJ/0u5w5XKUyuZOG9zk4IWowsD4r28Mga9H50N50qc2hA/7J7bGLD2E/n5iB7jcaOs9FC5bUQHN2LAHVwbEEXZJjekCfPlltZhoXVvlXbUwNuQ1KQgtE0pTvG8Xu0n2CN8MMZ2Pm07ZYKwBquat4hXbtMtqxJpl4ngviS6XjxquGRA8="
 addons:
   coverity_scan:
     project:
-      name: "ikogan/rundeck-http-plugin"
+      name: "rundeck-plugins/rundeck-http-plugin"
       description: "Rundeck HTTP Workflow Step Plugin"
-    notification_email: kogan@ohio.edu
-    build_command_prepend: "mvn clean"
-    build_command:   "mvn -DskipTests=true compile"
+    notification_email: ltoledo@rundeck.com
+    build_command_prepend: "gradle clean"
+    build_command:   "gradle build"
     branch_pattern: code-analysis

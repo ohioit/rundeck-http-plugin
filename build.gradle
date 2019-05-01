@@ -1,0 +1,92 @@
+plugins {
+    id 'pl.allegro.tech.build.axion-release' version '1.10.1'
+    id 'java'
+}
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+ext.rundeckPluginVersion = '1.2'
+ext.pluginClassNames='edu.ohio.ais.rundeck.HttpWorkflowStepPlugin'
+ext.pluginName = 'Http Step'
+ext.pluginDescription = 'A workflow plugin that makes HTTP requests'
+
+scmVersion {
+    ignoreUncommittedChanges = false
+    tag {
+        prefix = ''
+        versionSeparator = ''
+        def origDeserialize=deserialize
+        //apend .0 to satisfy semver if the tag version is only X.Y
+        deserialize = { config, position, tagName ->
+            def orig = origDeserialize(config, position, tagName)
+            if (orig.split('\\.').length < 3) {
+                orig += ".0"
+            }
+            orig
+        }
+    }
+}
+project.version = scmVersion.version
+
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+configurations{
+    //declare custom pluginLibs configuration to include only libs for this plugin
+    pluginLibs
+
+    //declare compile to extend from pluginLibs so it inherits the dependencies
+    compile{
+        extendsFrom pluginLibs
+    }
+}
+
+dependencies {
+    compile 'org.rundeck:rundeck-core:3.0.+'
+    
+    pluginLibs group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.8'
+    pluginLibs group: 'com.google.code.gson', name: 'gson', version:'2.8.5'
+    pluginLibs group: 'com.esotericsoftware.yamlbeans', name: 'yamlbeans', version:'1.13'
+
+    testCompile group: 'com.github.tomakehurst', name: 'wiremock-standalone', version:'2.23.2'
+    testCompile group: 'junit', name: 'junit', version:'4.12'
+}
+
+
+// task to copy plugin libs to output/lib dir
+task copyToLib(type: Copy) {
+    into "$buildDir/output/lib"
+    from configurations.pluginLibs
+}
+
+
+jar {
+    from "$buildDir/output"
+    manifest {
+        def libList = configurations.pluginLibs.collect{'lib/'+it.name}.join(' ')
+
+        attributes 'Rundeck-Plugin-Classnames': pluginClassNames
+        attributes 'Rundeck-Plugin-File-Version': version
+        attributes 'Rundeck-Plugin-Name': '${pluginName}'
+        attributes 'Rundeck-Plugin-Description': pluginDescription
+        attributes 'Rundeck-Plugin-Rundeck-Compatibility-Version': '3.x'
+        attributes 'Rundeck-Plugin-Tags': 'java,WorkflowStep'
+        attributes 'Rundeck-Plugin-License': 'Apache 2.0'
+        attributes 'Rundeck-Plugin-Source-Link': 'https://github.com/rundeck-plugins/http-notification'
+        attributes 'Rundeck-Plugin-Target-Host-Compatibility': 'all'
+        attributes 'Rundeck-Plugin-Version': rundeckPluginVersion
+        attributes 'Rundeck-Plugin-Archive': 'true'
+        attributes 'Rundeck-Plugin-Libs': "${libList}"
+
+    }
+    dependsOn(copyToLib)
+
+}
+
+wrapper {
+    gradleVersion = '4.4.1'
+}
