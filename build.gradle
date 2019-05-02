@@ -8,7 +8,7 @@ apply plugin: 'java'
 sourceCompatibility = 1.8
 ext.rundeckPluginVersion = '1.2'
 ext.pluginClassNames='edu.ohio.ais.rundeck.HttpWorkflowStepPlugin'
-ext.pluginName = 'Http Step'
+ext.pluginName = 'Rundeck Http Step'
 ext.pluginDescription = 'A workflow plugin that makes HTTP requests'
 
 scmVersion {
