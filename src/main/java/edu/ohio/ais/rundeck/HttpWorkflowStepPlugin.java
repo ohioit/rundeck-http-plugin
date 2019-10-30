@@ -15,6 +15,7 @@ import com.dtolabs.rundeck.plugins.step.StepPlugin;
 import com.dtolabs.rundeck.plugins.util.DescriptionBuilder;
 import com.dtolabs.rundeck.plugins.util.PropertyBuilder;
 import com.esotericsoftware.yamlbeans.YamlReader;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
 import edu.ohio.ais.rundeck.util.OAuthClient;
@@ -23,7 +24,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -36,6 +36,9 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
+import org.dom4j.DocumentHelper;
+import org.dom4j.io.OutputFormat;
+import org.dom4j.io.XMLWriter;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
@@ -44,10 +47,6 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import com.google.gson.Gson;
-import org.dom4j.DocumentHelper;
-import org.dom4j.io.OutputFormat;
-import org.dom4j.io.XMLWriter;
 
 
 /**
@@ -281,24 +280,25 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
         }
         CloseableHttpResponse response = null;
         try {
+            String body = null;
             response = this.getHttpClient(options).execute(request);
 
             //print the response content
             if(options.containsKey("printResponse") && Boolean.parseBoolean(options.get("printResponse").toString()) ||
                     options.containsKey("printResponseToFile") && Boolean.parseBoolean(options.get("printResponseToFile").toString())) {
 
-                String output = this.prettyPrint(response);
+                body = this.prettyPrint(response);
 
                 if(Boolean.parseBoolean(options.get("printResponse").toString())) {
                     //print response
-                    System.out.println(output);
+                    System.out.println(body);
                 }
 
                 if(Boolean.parseBoolean(options.get("printResponseToFile").toString())) {
 
                     File file = new File(options.get("file").toString());
                     BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-                    writer.write (output);
+                    writer.write (body);
 
                     //Close writer
                     writer.close();
@@ -374,7 +374,10 @@ public class HttpWorkflowStepPlugin implements StepPlugin, Describable {
                     message += ": " + Integer.toString(response.getStatusLine().getStatusCode()) + " Error";
                 }
 
-                String body = EntityUtils.toString(response.getEntity());
+                if(body == null){
+                    body = EntityUtils.toString(response.getEntity());
+                }
+
                 if(body.length() > 0) {
                     message += ": " + body;
                 }
