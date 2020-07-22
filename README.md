@@ -4,7 +4,6 @@ a [Rundeck](http://rundeck.org) workflow step. It is somewhat
 based on https://github.com/rvs-fluid-it/rundeck-httppost-plugin.
 
 ![Project unmaintained](https://img.shields.io/badge/project-unmaintained-red.svg)
-[![Build Status](https://travis-ci.org/ohioit/rundeck-http-plugin.svg?branch=master)](https://travis-ci.org/ohioit/rundeck-http-plugin) [![Test Coverage](http://codecov.io/github/ikogan/rundeck-http-plugin/coverage.svg?branch=master)](http://codecov.io/github/ikogan/rundeck-http-plugin?branch=master) [![Coverty Scan](https://scan.coverity.com/projects/6665/badge.svg?flat=1)](https://scan.coverity.com/projects/ikogan-rundeck-http-plugin)
 
 ## Project Unmaintained
 
