@@ -7,7 +7,11 @@ based on https://github.com/rvs-fluid-it/rundeck-httppost-plugin.
 
 ## Project Unmaintained
 
-We've moved our scheduling system to a Kubernetes based solution rather than Rundeck and so are no longer able to maintain this project unfortunately.
+We've moved our scheduling system to a Kubernetes based solution rather than Rundeck and so are no longer
+able to maintain this project unfortunately. Please also be mindful of [this PR](https://github.com/ohioit/rundeck-http-plugin/pull/11)
+that indicates a security vulnerability in the Rundeck dependency, which is quite old. Since this
+is a major version change, it will not be merged since we are unable to test it at this time unless
+others report that it works.
 
 ## Features
 
